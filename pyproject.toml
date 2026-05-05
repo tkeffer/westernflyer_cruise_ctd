@@ -1,0 +1,44 @@
+[project]
+name = "wf-cruise-ctd"
+version = "1.0.0"
+description = "Western Flyer CTD processing pipeline — SBE 19plus V2 raw hex to EOS-80 DuckDB"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    {name = "Joe Carlisle", email = "joeacarlisle@gmail.com"},
+]
+
+# Core runtime dependencies.
+# The Sea-Bird Scientific toolkit is NOT on PyPI and must be installed
+# separately after this package:
+#
+#   pip install -e "C:\Oceanography\Seabird CTD\seabirdscientific-main"
+#
+dependencies = [
+    "duckdb>=0.10.0",
+    "gsw>=3.6.0",
+    "numpy>=2.0.0",
+    "pandas>=2.0.0",
+    "scipy>=1.10.0",
+    # Visualization & geospatial (required by ctd_holoviews.py)
+    "bokeh>=3.3.0",
+    "cartopy>=0.22.0",
+    "geoviews>=1.10.0",
+    "holoviews>=1.17.0",
+    "hvplot>=0.9.0",
+    "panel>=1.3.0",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+# The pipeline modules live at the project root (no src/ layout).
+# Listing them here makes them importable after `pip install -e .`
+[tool.setuptools]
+py-modules = [
+    "main",
+    "eos80_processing",
+    "sbe19plus_ingestion",
+    "ctd_holoviews",
+]
