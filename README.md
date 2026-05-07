@@ -77,7 +77,7 @@ When installing, the installer will ask: "Add Python to PATH?" **Select NO.**
 * **main.py** — Orchestrator. Parses CLI args, loads the `.xmlcon` calibration, runs the per-cast pipeline, writes the DuckDB atomically, and stamps build provenance.
 * **sbe19plus_ingestion.py** — Hex ingestion and calibration. Reads raw `.hex` files via `read_hex_file`, applies temperature/pressure/conductivity/O2 (with tau and hysteresis corrections)/pH/CHL conversions from the Sea-Bird Scientific toolkit, and attaches cruise-log metadata.
 * **eos80_processing.py** — EOS-80 physics pipeline. CTM correction, O2 tau-shift, loop edit, Sea-Bird Low-Pass Filter, Wild Edit spike removal, and depth/theta/density calculations all delegate to the Sea-Bird Scientific toolkit. Salinity is derived from CTM-corrected conductivity via `gsw.SP_from_C`.
-* **ctd_holoviews.py** — Read-only Panel dashboard. Reactive widgets update all tabs when cruise or station selection changes. Includes vertical section plots with interpolated isopycnal contours computed from all stations in the selected cruise.
+* **ctd_holoviews.py** — Read-only Panel dashboard. Reactive widgets update all tabs when cruise or station selection changes.
 * **pyproject.toml** — Package definition. Enables `pip install -e .` to install the project and all dependencies in one step.
 * **config.toml** — Processing constants per cruise (CTM coefficients, bin size, QC thresholds, Wild Edit parameters). See schema below.
 * **calibration.xmlcon** — Sensor calibration file exported from SeaSoft. Contains T/C/P/O2/pH/CHL coefficients. This is the Jan 2026 calibration for CTD S/N 8289. Replace with the current xmlcon before each cruise.
