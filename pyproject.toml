@@ -3,18 +3,17 @@ name = "wf-cruise-ctd"
 version = "1.0.0"
 description = "Western Flyer CTD processing pipeline — SBE 19plus V2 raw hex to EOS-80 DuckDB"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 authors = [
     {name = "Joe Carlisle", email = "joeacarlisle@gmail.com"},
 ]
 
 # Core runtime dependencies.
-# The Sea-Bird Scientific toolkit is NOT on PyPI and must be installed
-# separately after this package:
-#
-#   pip install -e "C:\Oceanography\Seabird CTD\seabirdscientific-main"
-#
+# The Sea-Bird Scientific toolkit is installed directly from its GitHub
+# repository. To pin to a specific commit (recommended), replace @main
+# with @<commit-hash> (run: git -C <path-to-seabirdscientific> rev-parse HEAD).
 dependencies = [
+    "seabirdscientific @ git+https://github.com/Sea-BirdScientific/seabirdscientific.git@main",
     "duckdb>=0.10.0",
     "gsw>=3.6.0",
     "numpy>=2.0.0",

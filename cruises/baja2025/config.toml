@@ -1,0 +1,73 @@
+# Western Flyer CTD — Cruise Processing Configuration
+# Cruise ID comes from the directory name (cruises/<cruise_id>/), not this file.
+
+[metadata]
+# Informational only — not read by the pipeline
+CTD_SERIAL = 8289
+
+[offsets]
+# Additive offset applied to recomputed Practical Salinity (PSU).
+# Use to match bottle salinity samples.
+SAL_OFFSET = 0.0
+
+# Additive offset for pH. Use to correct for sensor drift between calibrations.
+PH_DRIFT = 0.0
+
+# Multiplicative gain applied to oxygen before density normalization.
+# Use to match Winkler titration values.
+O2_BOOST_RATIO = 1.0
+
+# Chlorophyll calibration: chl_final = (chl_raw * CHL_SLOPE) + CHL_OFFSET
+# The xmlcon ScaleFactor is applied during ingestion; use these only when a
+# post-deployment fluorometer calibration against extracted samples is available.
+CHL_SLOPE = 1.0
+CHL_OFFSET = 0.0
+
+[processing]
+# Scale factor converting ITS-90 temperature to IPTS-68 (t68 = t90 * T68_CONVERSION).
+# EOS-80 equations require IPTS-68.
+T68_CONVERSION = 1.00024
+
+# Cell-thermal-mass correction (SBE App Note 22 / Morison et al. 1994).
+# SBE 19plus defaults. Confirmed against CellTM.psa (baja2025).
+CTM_ALPHA = 0.04
+CTM_TAU   = 8.0
+
+# Scans to advance oxygen data to correct for SBE 43 electrochemical lag.
+# At 4 Hz, 20 scans = 5 s ≈ 5 m at 1 m/s. Confirmed against AlignCTD.psa.
+ALIGN_OXY_SHIFT = 20
+
+# Scans to advance temperature before PSS-78 to align T with the C cell.
+# On the SBE 19plus the T sensor leads the C cell during descent.
+# AlignCTD.psa Temperature advance = 0.5 s = 2 scans at 4 Hz.
+ALIGN_TEMP_SHIFT = 2
+
+# Sea-Bird Low-Pass Filter time constant in seconds.
+# Applied to conductivity before CTM correction, and to temperature before PSS-78.
+# 0.5 s matches SeaSoft Filter.psa default for 4 Hz profiling (confirmed baja2025).
+LPF_TIME_CONSTANT = 0.5
+
+[wild_edit]
+# SeaSoft Wild Edit: two-pass block-statistics spike removal applied after physics.
+# First-pass rejection threshold (standard deviations from block mean).
+WILD_STD_PASS1 = 2.0
+# Second-pass rejection threshold (more lenient, catches gross outliers).
+WILD_STD_PASS2 = 20.0
+# Number of scans per statistics block (100 scans = 25 s at 4 Hz).
+WILD_SCANS_PER_BLOCK = 100
+# Minimum absolute distance from block mean before a scan can be flagged (0 = no floor).
+WILD_DISTANCE_TO_MEAN = 0.0
+
+[soak_detection]
+# Minimum depth (m) before soak detection begins.
+MIN_DEPTH_FLOOR = 10.0
+# Minimum descent velocity (m/s) for soak detection and loop edit.
+LOOP_MIN_VELOCITY = 0.25
+# Consecutive samples that must satisfy descent criteria to end the soak period.
+SOAK_WINDOW_SIZE = 20
+
+[qc]
+# Descent speed (m/s) above which a scan is flagged QC=3.
+QC_VELOCITY = 1.2
+# Vertical bin resolution in the database (m). Override with --bin-size.
+BIN_SIZE_METERS = 1.0

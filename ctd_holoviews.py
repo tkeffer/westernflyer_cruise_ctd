@@ -121,7 +121,7 @@ def view_profiles(target_cruise, target_id, z_range, filter_qc, show_soak):
     df = get_clean_df(target_cruise, target_id, z_range, filter_qc, show_soak)
     if df.empty: return pn.pane.Alert("Data Pending...")
     v_opts = dict(invert_yaxis=True, height=550, show_grid=True, xaxis='top', tools=['hover'], xticks=3, padding=0.05,
-                  fontsize={'labels': '8pt', 'xticks': '7pt', 'yticks': '7pt', 'legend': '7pt'})
+                  line_width=2.5, fontsize={'labels': '8pt', 'xticks': '7pt', 'yticks': '7pt', 'legend': '7pt'})
 
     p1 = hv.Curve(df, 'theta', 'depth_m', label='Pot. Temp').opts(**v_opts, color='blue', width=175, xlabel='theta (°C)')
     p6 = hv.Curve(df, 'in_situ_temp', 'depth_m', label='In-Situ Temp').opts(**v_opts, color='purple', width=140, yaxis=None, xlabel='T (°C)')

@@ -9,7 +9,7 @@ The Western Flyer CTD codebase is a modular, automated processing pipeline desig
 * **Raw .hex Processing:** The pipeline starts from raw instrument `.hex` files rather than SeaSoft-processed `.cnv` files. Calibration coefficients are read directly from the instrument's `.xmlcon` configuration file, giving you full provenance over every conversion step.
 * **Sea-Bird Scientific Toolkit:** All sensor conversion and correction routines delegate to the official [Sea-Bird Scientific Python toolkit](https://github.com/Sea-Bird-Scientific/seabirdscientific). This includes temperature/pressure/conductivity conversion, O2 tau and hysteresis corrections, cell-thermal-mass correction, Sea-Bird Low-Pass Filter, O2 tau-shift alignment, loop edit, Wild Edit spike removal, and downcast extraction.
 * **Modular Cruise Architecture:** Each expedition is isolated under `cruises/<cruise_id>/`. Adding a new cruise requires only creating a directory with the raw `.hex` files and metadata; the directory name is the cruise ID.
-* **Sidecar Data Integration:** The pipeline joins raw CTD measurements with `calibration.csv` (processing parameters), `calibration.xmlcon` (sensor coefficients), and `cruise_log.csv` (station metadata) automatically.
+* **Sidecar Data Integration:** The pipeline joins raw CTD measurements with `config.toml` (processing parameters), `calibration.xmlcon` (sensor coefficients), and `stations.csv` (station metadata) automatically.
 * **Automated EOS-80 Physics Pipeline:** Core oceanographic correction logic runs in this fixed order: soak elimination → cell-thermal-mass (CTM) conductivity correction → O2 tau-shift alignment → loop edit → EOS-80 physics (Practical Salinity from CTM-corrected conductivity via PSS-78, then potential temperature and density) → chlorophyll calibration (`apply_chl_calibration`) → Wild Edit spike removal → velocity-based QC → downcast extraction → 1 m bin averaging.
 * **Atomic, Idempotent Storage:** Processed data is managed via DuckDB. Per-cruise records are replaced atomically inside a single transaction. A `build_metadata` table records the SHA-256 of the `.xmlcon` file and the git commit for every build, so every row in `ctd_data` is traceable to the exact calibration that produced it.
 * **Per-Build Audit Logging:** Each invocation writes a fresh, timestamped log file (`logs/wf_build_<cruise>_<timestamp>.log`).
@@ -51,9 +51,9 @@ When installing, the installer will ask: "Add Python to PATH?" **Select NO.**
     |   sbe19plus_ingestion.py
     +---cruises
     |   \---baja2025
-    |       |   calibration.csv        processing parameters
+    |       |   config.toml        processing parameters
     |       |   calibration.xmlcon     sensor calibration (from SeaSoft)
-    |       |   cruise_log.csv         station metadata
+    |       |   stations.csv         station metadata
     |       |
     |       \---hex
     |               20250416_cast1.hex
@@ -79,29 +79,20 @@ When installing, the installer will ask: "Add Python to PATH?" **Select NO.**
 * **eos80_processing.py** — EOS-80 physics pipeline. CTM correction, O2 tau-shift, loop edit, Sea-Bird Low-Pass Filter, Wild Edit spike removal, and depth/theta/density calculations all delegate to the Sea-Bird Scientific toolkit. Salinity is derived from CTM-corrected conductivity via `gsw.SP_from_C`.
 * **ctd_holoviews.py** — Read-only Panel dashboard. Reactive widgets update all tabs when cruise or station selection changes.
 * **pyproject.toml** — Package definition. Enables `pip install -e .` to install the project and all dependencies in one step.
-* **calibration.csv** — Processing constants per cruise (CTM coefficients, bin size, QC thresholds, Wild Edit parameters). See schema below.
+* **config.toml** — Processing constants per cruise (CTM coefficients, bin size, QC thresholds, Wild Edit parameters). See schema below.
 * **calibration.xmlcon** — Sensor calibration file exported from SeaSoft. Contains T/C/P/O2/pH/CHL coefficients. This is the Jan 2026 calibration for CTD S/N 8289. Replace with the current xmlcon before each cruise.
-* **cruise_log.csv** — Per-cast metadata: station name, lat/lon, cast numbers, start time.
+* **stations.csv** — Per-cast metadata: station name, lat/lon, cast numbers, start time.
 
 ## Prerequisites
 
-In addition to Python 3.12 (see above), the **Sea-Bird Scientific Python Toolkit** must be installed manually before setting up this project. It is not available on PyPI and must be cloned separately:
-
-    git clone https://github.com/Sea-BirdScientific/seabirdscientific.git
-
-This will create a `seabirdscientific` folder wherever you run the command. The recommended location is your user directory alongside the project:
-
-* **Windows:** `C:\Users\<your_username>\seabirdscientific`
-* **macOS / Linux:** `/home/<your_username>/seabirdscientific`
-
-Install it into the project virtual environment as shown in the Setup section below.
+Python 3.12 is required (see above). The **Sea-Bird Scientific Python Toolkit** is declared as a dependency in `pyproject.toml` and is installed automatically from GitHub when you run `pip install -e .` — no manual download required.
 
 ## Getting Started
 
     git clone https://github.com/joeacarlisle/westernflyer_cruise_ctd.git
     cd westernflyer_cruise_ctd
 
-Then follow the **Prerequisites** and **Setup** sections below to install Python 3.12, the Sea-Bird Scientific toolkit, and the project dependencies.
+Then follow the **Prerequisites** and **Setup** sections below to install Python 3.12 and the project dependencies.
 
 ## Setup: Virtual Environment and Installation
 
@@ -112,28 +103,26 @@ Then follow the **Prerequisites** and **Setup** sections below to install Python
     "C:\Users\<your_username>\AppData\Local\Programs\Python\Python312\python.exe" -m venv .venv
     .venv\Scripts\activate
     pip install -e .
-    pip install -e "C:\Users\<your_username>\seabirdscientific"
 
 ### macOS / Linux
 
     python3.12 -m venv .venv
     source .venv/bin/activate
     pip install -e .
-    pip install -e "/home/<your_username>/seabirdscientific"
 
-`pip install -e .` reads `pyproject.toml` and installs all dependencies (numpy, pandas, duckdb, holoviews, etc.) in one step. The Sea-Bird Scientific toolkit is not on PyPI and must be installed separately as the second command above.
+`pip install -e .` reads `pyproject.toml` and installs all dependencies in one step, including the Sea-Bird Scientific toolkit pulled directly from GitHub.
 
-The `-e` (editable) flag on both installs means source changes are picked up immediately without reinstalling.
+The `-e` (editable) flag means source changes are picked up immediately without reinstalling.
 
 ## Preparing a New Cruise
 
 1. Create a cruise directory: `cruises/<cruise_id>/`
 2. Place raw `.hex` files in `cruises/<cruise_id>/hex/`
 3. Copy the sensor calibration file from SeaSoft to `cruises/<cruise_id>/calibration.xmlcon`
-4. Create `cruises/<cruise_id>/calibration.csv` (see schema below)
-5. Create `cruises/<cruise_id>/cruise_log.csv` (see schema below)
+4. Create `cruises/<cruise_id>/config.toml` (see schema below)
+5. Create `cruises/<cruise_id>/stations.csv` (see schema below)
 
-### cruise_log.csv schema
+### stations.csv schema
 
 | Column | Description |
 |--------|-------------|
@@ -166,13 +155,18 @@ Run the build with the cruise ID as the argument:
 * **Windows:** `scripts\windows\ctd_build.bat <cruise_id>`
 * **Linux / macOS:** `./scripts/linux_mac/ctd_build.sh <cruise_id>`
 
-Or call `main.py` directly for full control:
+Alternatively, call `main.py` directly for full control. The following are example invocations — run only the one that fits your needs:
 
+    # Basic build
     python main.py baja2025
+
+    # Override bin size or enable verbose logging
     python main.py baja2025 --bin-size 0.5 --verbose
+
+    # Write output to a custom DuckDB path
     python main.py baja2025 --db /path/to/custom.duckdb
 
-    # Override the xmlcon or hex directory locations:
+    # Override the xmlcon or hex directory locations
     python main.py baja2025 --xmlcon /path/to/custom.xmlcon
     python main.py baja2025 --hex-dir /path/to/hex_files/
 
@@ -181,7 +175,7 @@ Or call `main.py` directly for full control:
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `cruise_id` | *(required)* | Cruise directory name under `cruises/` |
-| `--bin-size` | From `calibration.csv` | Vertical bin size in meters |
+| `--bin-size` | From `config.toml` | Vertical bin size in meters |
 | `--xmlcon` | `cruises/<id>/calibration.xmlcon` | Path to sensor calibration file |
 | `--hex-dir` | `cruises/<id>/hex/` | Directory containing raw `.hex` files |
 | `--db` | `processed/wf_ctd_eos80.duckdb` | DuckDB output path |
@@ -198,9 +192,9 @@ Or call `main.py` directly for full control:
 * **Windows:** `scripts\windows\ctd_dashboard.bat`
 * **Linux / macOS:** `./scripts/linux_mac/ctd_dashboard.sh`
 
-## calibration.csv Schema
+## config.toml Schema
 
-`calibration.csv` uses `parameter,value` columns. Lines beginning with `#` are comments. The cruise ID is **not** stored here — it comes from the directory name.
+`config.toml` uses TOML format with named sections (e.g. `[processing]`, `[wild_edit]`). The cruise ID is **not** stored here — it comes from the directory name.
 
 ### Calibration Offsets
 

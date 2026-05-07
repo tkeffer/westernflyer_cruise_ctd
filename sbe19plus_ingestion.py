@@ -268,18 +268,28 @@ def dm_to_decimal(dm_str):
         return None
 
 
-def load_config_csv(file_path):
-    """Loads calibration / processing parameters from a ``parameter,value`` CSV.
+def load_config(file_path):
+    """Loads cruise processing parameters from a TOML config file.
 
-    Comment lines beginning with ``#`` are ignored.  Duplicate keys raise
-    rather than silently overwriting.
+    Sections (e.g. [processing], [wild_edit]) are flattened into a single
+    dict so all existing ``config.get('KEY', default)`` calls work unchanged.
+    Duplicate keys across sections raise rather than silently overwriting.
     """
+    import tomllib
+    file_path = Path(file_path)
     logging.info("Loading configuration: %s", file_path)
-    df = pd.read_csv(file_path, comment='#')
-    if df['parameter'].duplicated().any():
-        dups = df.loc[df['parameter'].duplicated(), 'parameter'].tolist()
-        raise ValueError(f"Duplicate parameter keys in {file_path}: {dups}")
-    return df.set_index('parameter')['value'].to_dict()
+    with open(file_path, 'rb') as f:
+        raw = tomllib.load(f)
+    flat = {}
+    for section, value in raw.items():
+        if isinstance(value, dict):
+            for k, v in value.items():
+                if k in flat:
+                    raise ValueError(f"Duplicate key '{k}' in {file_path}")
+                flat[k] = str(v)
+        else:
+            flat[section] = str(value)
+    return flat
 
 
 def load_cruise_log(file_path):

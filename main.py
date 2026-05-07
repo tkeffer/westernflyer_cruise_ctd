@@ -189,7 +189,7 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Build the Western Flyer CTD DuckDB for one cruise.")
     parser.add_argument("cruise_id", help="Cruise directory name under cruises/, e.g. baja2025")
     parser.add_argument("--bin-size", type=float, default=None,
-                        help="Override BIN_SIZE_METERS from calibration.csv (m)")
+                        help="Override BIN_SIZE_METERS from config.toml (m)")
     parser.add_argument("--db", type=pathlib.Path, default=DEFAULT_DB_PATH,
                         help=f"DuckDB output path (default: {DEFAULT_DB_PATH})")
     parser.add_argument("--xmlcon", type=pathlib.Path, default=None,
@@ -219,9 +219,9 @@ def main(argv=None):
     logging.info(f"--- STARTING PIPELINE FOR {cruise_id.upper()} ---")
     logging.info(f"Build log: {log_path}")
 
-    calibration_path = cruise_dir / 'calibration.csv'
-    config = sbe19plus_ingestion.load_config_csv(calibration_path)
-    cruise_log = sbe19plus_ingestion.load_cruise_log(cruise_dir / 'cruise_log.csv')
+    calibration_path = cruise_dir / 'config.toml'
+    config = sbe19plus_ingestion.load_config(calibration_path)
+    cruise_log = sbe19plus_ingestion.load_cruise_log(cruise_dir / 'stations.csv')
 
     config['CRUISE_ID'] = cruise_id
     eos80_processing.validate_config(config)
