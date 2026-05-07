@@ -335,16 +335,16 @@ view_tabular_data = pn.Column(
 
 # 6. ASSEMBLY
 tabs = pn.Tabs(
-    ("Vertical Profiles", view_profiles),
     ("Cruise Summary", view_cruise_summary),
     ("Geolocation", view_map_geolocation),
-    ("T-S Analysis", view_ts_analysis),
     ("Vertical Section", view_section),
+    ("Vertical Profiles", view_profiles),
+    ("T-S Analysis", view_ts_analysis),
     ("Stability & MLD", view_stability),
     ("Oxygen Utilization (AOU)", view_aou),
     ("Metabolic Index", view_metabolic_index),
     ("Tabular Data", view_tabular_data),
-    dynamic=True, active=0
+    dynamic=True, active=3
 )
 
 dashboard = pn.template.FastListTemplate(
