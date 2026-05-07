@@ -13,7 +13,7 @@ The Western Flyer CTD codebase is a modular, automated processing pipeline desig
 * **Automated EOS-80 Physics Pipeline:** Core oceanographic correction logic runs in this fixed order: soak elimination → cell-thermal-mass (CTM) conductivity correction → O2 tau-shift alignment → loop edit → EOS-80 physics (Practical Salinity from CTM-corrected conductivity via PSS-78, then potential temperature and density) → chlorophyll calibration (`apply_chl_calibration`) → Wild Edit spike removal → velocity-based QC → downcast extraction → 1 m bin averaging.
 * **Atomic, Idempotent Storage:** Processed data is managed via DuckDB. Per-cruise records are replaced atomically inside a single transaction. A `build_metadata` table records the SHA-256 of the `.xmlcon` file and the git commit for every build, so every row in `ctd_data` is traceable to the exact calibration that produced it.
 * **Per-Build Audit Logging:** Each invocation writes a fresh, timestamped log file (`logs/wf_build_<cruise>_<timestamp>.log`).
-* **Interactive Dashboard Suite:** A built-in visualization suite powered by the HoloViz ecosystem (Panel, HoloViews, Bokeh) renders interactive dashboards. Supports multi-variable vertical profiling, T-S analysis, AOU, MLD/stability, the metabolic index Φ, geolocation, and tabular export.
+* **Interactive Dashboard Suite:** A built-in visualization suite powered by the HoloViz ecosystem (Panel, HoloViews, Bokeh) renders interactive dashboards. Supports multi-variable vertical profiling, T-S analysis, vertical section plots with isopycnal (σθ) contours, AOU, MLD/stability, the metabolic index Φ, geolocation, and tabular export.
 
 ## Root Directory Notes
 
@@ -77,7 +77,7 @@ When installing, the installer will ask: "Add Python to PATH?" **Select NO.**
 * **main.py** — Orchestrator. Parses CLI args, loads the `.xmlcon` calibration, runs the per-cast pipeline, writes the DuckDB atomically, and stamps build provenance.
 * **sbe19plus_ingestion.py** — Hex ingestion and calibration. Reads raw `.hex` files via `read_hex_file`, applies temperature/pressure/conductivity/O2 (with tau and hysteresis corrections)/pH/CHL conversions from the Sea-Bird Scientific toolkit, and attaches cruise-log metadata.
 * **eos80_processing.py** — EOS-80 physics pipeline. CTM correction, O2 tau-shift, loop edit, Sea-Bird Low-Pass Filter, Wild Edit spike removal, and depth/theta/density calculations all delegate to the Sea-Bird Scientific toolkit. Salinity is derived from CTM-corrected conductivity via `gsw.SP_from_C`.
-* **ctd_holoviews.py** — Read-only Panel dashboard. Reactive widgets update all tabs when cruise or station selection changes.
+* **ctd_holoviews.py** — Read-only Panel dashboard. Reactive widgets update all tabs when cruise or station selection changes. Includes vertical section plots with interpolated isopycnal contours computed from all stations in the selected cruise.
 * **pyproject.toml** — Package definition. Enables `pip install -e .` to install the project and all dependencies in one step.
 * **config.toml** — Processing constants per cruise (CTM coefficients, bin size, QC thresholds, Wild Edit parameters). See schema below.
 * **calibration.xmlcon** — Sensor calibration file exported from SeaSoft. Contains T/C/P/O2/pH/CHL coefficients. This is the Jan 2026 calibration for CTD S/N 8289. Replace with the current xmlcon before each cruise.

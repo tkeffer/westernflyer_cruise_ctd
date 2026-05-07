@@ -10,6 +10,8 @@ import cartopy.crs as ccrs
 import pathlib
 import re
 from io import BytesIO
+from scipy.interpolate import griddata
+from holoviews.operation import contours as hv_contours
 
 # 1. ENGINE INITIALIZATION
 pn.extension('tabulator')
@@ -180,6 +182,146 @@ def view_map_geolocation(target_cruise, target_id):
     sel = gv.Points(cruise_coords[cruise_coords['station_id'] == target_id], ['lon', 'lat'], crs=ccrs.PlateCarree()).opts(size=18, color='red', marker='circle', line_color='white')
     return (gvts.EsriOceanBase * gvts.EsriOceanReference * pts * sel).opts(width=900, height=600, title="Geolocation")
 
+# ── Section plot helpers ───────────────────────────────────────────────────────
+def _haversine_km(lat1, lon1, lat2, lon2):
+    """Great-circle distance between two coordinate pairs in kilometres."""
+    R = 6371.0
+    dlat = np.radians(lat2 - lat1)
+    dlon = np.radians(lon2 - lon1)
+    a = (np.sin(dlat / 2) ** 2
+         + np.cos(np.radians(lat1)) * np.cos(np.radians(lat2)) * np.sin(dlon / 2) ** 2)
+    return 2 * R * np.arcsin(np.sqrt(a))
+
+_SECTION_VARS = {
+    'Pot. Temperature (°C)': ('theta',        'RdBu_r',  '°C'),
+    'In-Situ Temp (°C)':     ('in_situ_temp', 'RdBu_r',  '°C'),
+    'Practical Salinity':    ('SP',           'viridis', 'PSU'),
+    'Density σ (kg/m³)':     ('sigma',        'viridis', 'kg/m³'),
+    'Oxygen (µmol/kg)':      ('o2_final',     'plasma',  'µmol/kg'),
+    'pH':                    ('ph_final',     'RdYlBu',  ''),
+    'Chlorophyll (mg/m³)':   ('chl_final',    'Greens',  'mg/m³'),
+}
+
+section_var_select = pn.widgets.Select(
+    name='Section Variable',
+    options=list(_SECTION_VARS.keys()),
+    value='Pot. Temperature (°C)',
+    width=230,
+)
+
+def _section_impl(target_cruise, z_range, filter_qc, section_var_label):
+    col, cmap, unit = _SECTION_VARS[section_var_label]
+    qc_clause = "AND qc_flag < 3" if filter_qc else ""
+    query = f"""
+        SELECT station_id, lat, lon, time_iso, depth_m, dbar_bin,
+               theta, in_situ_temp, SP, rho, o2_final, ph_final, chl_final
+        FROM {TABLE_NAME}
+        WHERE cruise_id = ?
+        AND dbar_bin BETWEEN ? AND ?
+        AND is_soak = 0
+        {qc_clause}
+        ORDER BY station_id, dbar_bin ASC
+    """
+    df = con.execute(query, (target_cruise, z_range[0], z_range[1])).df()
+    if df.empty:
+        return pn.pane.Alert("No data available for section plot.")
+
+    # Always compute sigma — needed for isopycnal contours regardless of variable
+    df['sigma'] = df['rho'] - 1000
+
+    if col not in df.columns:
+        return pn.pane.Alert(f"Column '{col}' not found in data.")
+
+    # Order stations chronologically along the cruise track
+    station_order = (
+        df.groupby('station_id')['time_iso'].min()
+        .sort_values().index.tolist()
+    )
+
+    # Cumulative along-track distance (km) for each station
+    sta_pos = df.groupby('station_id')[['lat', 'lon']].first().loc[station_order]
+    lats, lons = sta_pos['lat'].values, sta_pos['lon'].values
+    cum_dist = np.zeros(len(station_order))
+    for i in range(1, len(station_order)):
+        cum_dist[i] = cum_dist[i - 1] + _haversine_km(
+            lats[i - 1], lons[i - 1], lats[i], lons[i]
+        )
+    dist_map = dict(zip(station_order, cum_dist))
+    df['dist_km'] = df['station_id'].map(dist_map)
+
+    # Base (x, y) grid — shared by main variable and sigma
+    x_all = df['dist_km'].values.astype(float)
+    y_all = df['depth_m'].values.astype(float)
+    base_mask = ~(np.isnan(x_all) | np.isnan(y_all))
+
+    # ── Main variable ─────────────────────────────────────────────────────────
+    z = df[col].values.astype(float)
+    mask = base_mask & ~np.isnan(z)
+    xm, ym, zm = x_all[mask], y_all[mask], z[mask]
+
+    if len(xm) < 10:
+        return pn.pane.Alert("Insufficient data for section interpolation.")
+
+    # Regular 300 × 200 grid
+    xi = np.linspace(xm.min(), xm.max(), 300)
+    yi = np.linspace(ym.min(), ym.max(), 200)
+    Xi, Yi = np.meshgrid(xi, yi)
+    Zi = griddata((xm, ym), zm, (Xi, Yi), method='linear')
+
+    vmin = np.nanpercentile(zm, 2)
+    vmax = np.nanpercentile(zm, 98)
+    label = section_var_label + (f' [{unit}]' if unit else '')
+
+    img = hv.Image(
+        (xi, yi, Zi),
+        kdims=['Distance Along Track (km)', 'Depth (m)'],
+        vdims=[label],
+    ).opts(
+        cmap=cmap, colorbar=True, clim=(vmin, vmax),
+        width=900, height=500, invert_yaxis=True,
+        tools=['hover'],
+        title=f"{section_var_label} Section — {target_cruise}",
+        fontsize={'title': '10pt', 'labels': '9pt', 'xticks': '8pt', 'yticks': '8pt'},
+    )
+
+    # ── Isopycnal contours (σθ, every 0.5 kg/m³) ─────────────────────────────
+    s_vals = df['sigma'].values.astype(float)
+    s_mask = base_mask & ~np.isnan(s_vals)
+    Zi_sigma = griddata(
+        (x_all[s_mask], y_all[s_mask]), s_vals[s_mask], (Xi, Yi), method='linear'
+    )
+    s_clean = Zi_sigma[~np.isnan(Zi_sigma)]
+    if len(s_clean) > 0:
+        lvl_min = np.ceil(s_clean.min() * 2) / 2
+        lvl_max = np.floor(s_clean.max() * 2) / 2
+        levels = np.arange(lvl_min, lvl_max + 0.5, 0.5).tolist()
+    else:
+        levels = 10
+
+    sigma_img = hv.Image(
+        (xi, yi, Zi_sigma),
+        kdims=['Distance Along Track (km)', 'Depth (m)'],
+        vdims=['sigma'],
+    )
+    iso = hv_contours(sigma_img, levels=levels).opts(
+        line_color='black', line_width=0.9, show_legend=False
+    )
+
+    # ── Station marker lines ──────────────────────────────────────────────────
+    sta_lines = hv.Overlay([
+        hv.VLine(d).opts(color='white', line_width=0.8, line_dash='dashed', alpha=0.5)
+        for d in cum_dist
+    ])
+
+    return (img * iso * sta_lines).opts(show_grid=False)
+
+view_section = pn.Column(
+    pn.Row(section_var_select, margin=(8, 0, 4, 10)),
+    pn.bind(_section_impl, cruise_select, depth_slider, qc_checkbox, section_var_select),
+    sizing_mode='stretch_both',
+)
+
+# ── Tabular data ───────────────────────────────────────────────────────────────
 def _tabular_impl(target_cruise, target_id, z_range, filter_qc, show_soak):
     df = get_clean_df(target_cruise, target_id, z_range, filter_qc, show_soak)
     if df.empty:
@@ -194,13 +336,14 @@ view_tabular_data = pn.Column(
 # 6. ASSEMBLY
 tabs = pn.Tabs(
     ("Vertical Profiles", view_profiles),
-    ("T-S Analysis", view_ts_analysis),
-    ("Oxygen Utilization (AOU)", view_aou),
-    ("Stability & MLD", view_stability),
-    ("Metabolic Index", view_metabolic_index),
-    ("Geolocation", view_map_geolocation),
-    ("Tabular Data", view_tabular_data),
     ("Cruise Summary", view_cruise_summary),
+    ("Geolocation", view_map_geolocation),
+    ("T-S Analysis", view_ts_analysis),
+    ("Vertical Section", view_section),
+    ("Stability & MLD", view_stability),
+    ("Oxygen Utilization (AOU)", view_aou),
+    ("Metabolic Index", view_metabolic_index),
+    ("Tabular Data", view_tabular_data),
     dynamic=True, active=0
 )
 
