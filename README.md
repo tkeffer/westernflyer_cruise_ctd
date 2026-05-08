@@ -85,7 +85,7 @@ When installing, the installer will ask: "Add Python to PATH?" **Select NO.**
 
 ## Prerequisites
 
-Python 3.12 is required (see above). The **Sea-Bird Scientific Python Toolkit** is declared as a dependency in `pyproject.toml` and is installed automatically from GitHub when you run `pip install -e .` — no manual download required.
+Python 3.12 is required (see above). The **Sea-Bird Scientific Python Toolkit** is declared as a dependency in `pyproject.toml` and is installed automatically from PyPI when you run `pip install -e .` — no manual download required.
 
 ## Getting Started
 
