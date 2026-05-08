@@ -504,7 +504,7 @@ def apply_wild_edit(df, config):
     for col in targets:
         if col not in df.columns:
             continue
-        data = df[col].to_numpy(dtype=float)
+        data = df[col].to_numpy(dtype=float, copy=True)
         # Wild edit expects no NaNs; temporarily replace NaN with FLAG_VALUE
         nan_mask = np.isnan(data)
         data[nan_mask] = FLAG_VALUE
