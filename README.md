@@ -110,7 +110,7 @@ Then follow the **Prerequisites** and **Setup** sections below to install Python
     source .venv/bin/activate
     pip install -e .
 
-`pip install -e .` reads `pyproject.toml` and installs all dependencies in one step, including the Sea-Bird Scientific toolkit pulled directly from GitHub.
+`pip install -e .` reads `pyproject.toml` and installs all dependencies in one step, including the Sea-Bird Scientific toolkit pulled from PyPI.
 
 The `-e` (editable) flag means source changes are picked up immediately without reinstalling.
 
