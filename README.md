@@ -34,11 +34,22 @@ When installing, the installer will ask: "Add Python to PATH?" **Select NO.**
 ### macOS (Homebrew)
     brew install python@3.12
 
-### Linux (Ubuntu / Debian)
+### Linux (Ubuntu / Debian) using apt install
     sudo add-apt-repository ppa:deadsnakes/ppa
     sudo apt update
     sudo apt install python3.12 python3.12-venv
 
+### Linux (Ubuntu / Debian) using pyenv
+
+This has the advantage of not requiring root privileges, and it does not install Python 3.12 system wide.
+
+    # Install pyenv:
+    curl -fsSL https://pyenv.run | bash
+    # Install Python 3.12:
+    pyenv install 3.12
+    # Set Python 3.12 as the global default:
+    pyenv global 3.12
+    
 ## Project Structure
 
 *`logs/` and `processed/` are created automatically on first run.*
@@ -124,15 +135,15 @@ The `-e` (editable) flag means source changes are picked up immediately without 
 
 ### stations.csv schema
 
-| Column | Description |
-|--------|-------------|
-| `file_key` | Hex filename stem (e.g. `20250416_cast1` for `20250416_cast1.hex`) |
-| `station_name` | Station identifier (e.g. `STA01`) |
-| `lat` | Latitude in `DD-MM.MMN` format (e.g. `23-30.00N`) or decimal degrees |
-| `lon` | Longitude in `DD-MM.MMW` format (e.g. `110-15.00W`) or decimal degrees |
-| `sb_cast` | Sea-Bird instrument cast number |
-| `wf_cast` | Western Flyer expedition cast number |
-| `start_utc` | Cast start time fallback if not in hex header (`YYYY-MM-DD HH:MM:SS`) |
+| Column         | Description                                                            |
+|----------------|------------------------------------------------------------------------|
+| `file_key`     | Hex filename stem (e.g. `20250416_cast1` for `20250416_cast1.hex`)     |
+| `station_name` | Station identifier (e.g. `STA01`)                                      |
+| `lat`          | Latitude in `DD-MM.MMN` format (e.g. `23-30.00N`) or decimal degrees   |
+| `lon`          | Longitude in `DD-MM.MMW` format (e.g. `110-15.00W`) or decimal degrees |
+| `sb_cast`      | Sea-Bird instrument cast number                                        |
+| `wf_cast`      | Western Flyer expedition cast number                                   |
+| `start_utc`    | Cast start time fallback if not in hex header (`YYYY-MM-DD HH:MM:SS`)  |
 
 ## Running the Pipeline
 
@@ -172,14 +183,14 @@ Alternatively, call `main.py` directly for full control. The following are examp
 
 ### CLI arguments
 
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `cruise_id` | *(required)* | Cruise directory name under `cruises/` |
-| `--bin-size` | From `config.toml` | Vertical bin size in meters |
-| `--xmlcon` | `cruises/<id>/calibration.xmlcon` | Path to sensor calibration file |
-| `--hex-dir` | `cruises/<id>/hex/` | Directory containing raw `.hex` files |
-| `--db` | `processed/wf_ctd_eos80.duckdb` | DuckDB output path |
-| `--verbose` / `-v` | Off | Enable DEBUG-level logging |
+| Argument           | Default                           | Description                            |
+|--------------------|-----------------------------------|----------------------------------------|
+| `cruise_id`        | *(required)*                      | Cruise directory name under `cruises/` |
+| `--bin-size`       | From `config.toml`                | Vertical bin size in meters            |
+| `--xmlcon`         | `cruises/<id>/calibration.xmlcon` | Path to sensor calibration file        |
+| `--hex-dir`        | `cruises/<id>/hex/`               | Directory containing raw `.hex` files  |
+| `--db`             | `processed/wf_ctd_eos80.duckdb`   | DuckDB output path                     |
+| `--verbose` / `-v` | Off                               | Enable DEBUG-level logging             |
 
 *On macOS / Linux, make scripts executable once:*
 
@@ -198,47 +209,47 @@ Alternatively, call `main.py` directly for full control. The following are examp
 
 ### Calibration Offsets
 
-| Parameter | Description |
-|-----------|-------------|
-| `CTD_SERIAL` | Instrument serial number (informational; not read by pipeline) |
-| `SAL_OFFSET` | Additive offset applied to recomputed Practical Salinity (PSU). Use to match bottle salinity samples. |
-| `PH_DRIFT` | Additive offset for pH. Use to correct for sensor drift between calibrations. |
-| `O2_BOOST_RATIO` | Multiplicative gain applied to oxygen before density normalization. Use to match Winkler titration values. |
-| `CHL_SLOPE` | Multiplicative secondary gain for chlorophyll (default 1.0). The xmlcon ScaleFactor is applied during ingestion; use this only when a post-deployment fluorometer calibration against extracted chlorophyll samples is available. |
-| `CHL_OFFSET` | Additive offset for chlorophyll (µg/L). |
+| Parameter        | Description                                                                                                                                                                                                                       |
+|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `CTD_SERIAL`     | Instrument serial number (informational; not read by pipeline)                                                                                                                                                                    |
+| `SAL_OFFSET`     | Additive offset applied to recomputed Practical Salinity (PSU). Use to match bottle salinity samples.                                                                                                                             |
+| `PH_DRIFT`       | Additive offset for pH. Use to correct for sensor drift between calibrations.                                                                                                                                                     |
+| `O2_BOOST_RATIO` | Multiplicative gain applied to oxygen before density normalization. Use to match Winkler titration values.                                                                                                                        |
+| `CHL_SLOPE`      | Multiplicative secondary gain for chlorophyll (default 1.0). The xmlcon ScaleFactor is applied during ingestion; use this only when a post-deployment fluorometer calibration against extracted chlorophyll samples is available. |
+| `CHL_OFFSET`     | Additive offset for chlorophyll (µg/L).                                                                                                                                                                                           |
 
 ### SBE Processing Constants
 
-| Parameter | Description |
-|-----------|-------------|
-| `T68_CONVERSION` | Scale factor converting ITS-90 temperature to IPTS-68 (default 1.00024). EOS-80 equations require IPTS-68. |
-| `CTM_ALPHA` | Cell-thermal-mass amplitude α (default 0.04). SBE 19plus default. Passed to `cell_thermal_mass()`. |
-| `CTM_TAU` | Cell-thermal-mass time constant τ in seconds (default 8.0). SBE 19plus default. Passed to `cell_thermal_mass()`. |
-| `ALIGN_OXY_SHIFT` | Samples to advance oxygen data to correct for SBE 43 electrochemical lag. At 4 Hz, 20 samples = 5 s ≈ 5 m at 1 m/s. Passed to `align_ctd()`. |
+| Parameter           | Description                                                                                                                                                                                                                                           |
+|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `T68_CONVERSION`    | Scale factor converting ITS-90 temperature to IPTS-68 (default 1.00024). EOS-80 equations require IPTS-68.                                                                                                                                            |
+| `CTM_ALPHA`         | Cell-thermal-mass amplitude α (default 0.04). SBE 19plus default. Passed to `cell_thermal_mass()`.                                                                                                                                                    |
+| `CTM_TAU`           | Cell-thermal-mass time constant τ in seconds (default 8.0). SBE 19plus default. Passed to `cell_thermal_mass()`.                                                                                                                                      |
+| `ALIGN_OXY_SHIFT`   | Samples to advance oxygen data to correct for SBE 43 electrochemical lag. At 4 Hz, 20 samples = 5 s ≈ 5 m at 1 m/s. Passed to `align_ctd()`.                                                                                                          |
 | `LPF_TIME_CONSTANT` | Sea-Bird Low-Pass Filter time constant in seconds. Applied to conductivity before CTM, to temperature before PSS-78, and to all derived physics variables. Default 0.5 s (matches SeaSoft default for 4 Hz profiling). Passed to `low_pass_filter()`. |
 
 ### Wild Edit Parameters
 
-| Parameter | Description |
-|-----------|-------------|
-| `WILD_STD_PASS1` | First-pass spike rejection threshold (standard deviations from block mean). Default 2.0. |
-| `WILD_STD_PASS2` | Second-pass spike rejection threshold (standard deviations). Default 20.0. |
-| `WILD_SCANS_PER_BLOCK` | Number of scans per statistics block. Default 100 (25 s at 4 Hz). |
+| Parameter               | Description                                                                                         |
+|-------------------------|-----------------------------------------------------------------------------------------------------|
+| `WILD_STD_PASS1`        | First-pass spike rejection threshold (standard deviations from block mean). Default 2.0.            |
+| `WILD_STD_PASS2`        | Second-pass spike rejection threshold (standard deviations). Default 20.0.                          |
+| `WILD_SCANS_PER_BLOCK`  | Number of scans per statistics block. Default 100 (25 s at 4 Hz).                                   |
 | `WILD_DISTANCE_TO_MEAN` | Minimum absolute distance from block mean before a scan can be flagged (0 = no floor). Default 0.0. |
 
 ### Soak Detection Parameters
 
-| Parameter | Description |
-|-----------|-------------|
-| `MIN_DEPTH_FLOOR` | Minimum depth (m) before soak detection begins. Default 10.0. |
-| `LOOP_MIN_VELOCITY` | Minimum descent velocity (m/s) for soak detection and loop edit. Default 0.25. |
-| `SOAK_WINDOW_SIZE` | Consecutive samples that must satisfy descent criteria to end the soak period. Default 20. |
+| Parameter           | Description                                                                                |
+|---------------------|--------------------------------------------------------------------------------------------|
+| `MIN_DEPTH_FLOOR`   | Minimum depth (m) before soak detection begins. Default 10.0.                              |
+| `LOOP_MIN_VELOCITY` | Minimum descent velocity (m/s) for soak detection and loop edit. Default 0.25.             |
+| `SOAK_WINDOW_SIZE`  | Consecutive samples that must satisfy descent criteria to end the soak period. Default 20. |
 
 ### QC and Resolution Thresholds
 
-| Parameter | Description |
-|-----------|-------------|
-| `QC_VELOCITY` | Descent speed (m/s) above which a scan is flagged QC=3. Default 1.2. |
+| Parameter         | Description                                                                           |
+|-------------------|---------------------------------------------------------------------------------------|
+| `QC_VELOCITY`     | Descent speed (m/s) above which a scan is flagged QC=3. Default 1.2.                  |
 | `BIN_SIZE_METERS` | Vertical bin resolution in the database (m). Default 1.0. Override with `--bin-size`. |
 
 ## Contact
