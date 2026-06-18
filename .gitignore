@@ -3,6 +3,7 @@
 
 # JetBrains tools
 .idea/
+.junie/
 
 # Python cache
 __pycache__/
