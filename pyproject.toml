@@ -9,15 +9,13 @@ authors = [
 ]
 
 # Core runtime dependencies.
-# The Sea-Bird Scientific toolkit is installed directly from its GitHub
-# repository. To pin to a specific commit (recommended), replace @main
-# with @<commit-hash> (run: git -C <path-to-seabirdscientific> rev-parse HEAD).
+# seabirdscientific is available on PyPI (supports Python 3.9–3.12).
 dependencies = [
-    "seabirdscientific @ git+https://github.com/Sea-BirdScientific/seabirdscientific.git@main",
-    "duckdb>=0.10.0",
+    "seabirdscientific>=2.7.8",
+    "duckdb>=1.5.0",
     "gsw>=3.6.0",
     "numpy>=2.0.0",
-    "pandas>=2.0.0",
+    "pandas>=3.0.0",
     "scipy>=1.10.0",
     # Visualization & geospatial (required by ctd_holoviews.py)
     "bokeh>=3.3.0",

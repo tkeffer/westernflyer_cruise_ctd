@@ -96,7 +96,7 @@ This has the advantage of not requiring root privileges, and it does not install
 
 ## Prerequisites
 
-Python 3.12 is required (see above). The **Sea-Bird Scientific Python Toolkit** is declared as a dependency in `pyproject.toml` and is installed automatically from GitHub when you run `pip install -e .` — no manual download required.
+Python 3.12 is required (see above). The **Sea-Bird Scientific Python Toolkit** is declared as a dependency in `pyproject.toml` and is installed automatically from PyPI when you run `pip install -e .` — no manual download required.
 
 ## Getting Started
 
@@ -121,7 +121,7 @@ Then follow the **Prerequisites** and **Setup** sections below to install Python
     source .venv/bin/activate
     pip install -e .
 
-`pip install -e .` reads `pyproject.toml` and installs all dependencies in one step, including the Sea-Bird Scientific toolkit pulled directly from GitHub.
+`pip install -e .` reads `pyproject.toml` and installs all dependencies in one step, including the Sea-Bird Scientific toolkit pulled from PyPI.
 
 The `-e` (editable) flag means source changes are picked up immediately without reinstalling.
 

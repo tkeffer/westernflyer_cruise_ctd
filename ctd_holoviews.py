@@ -12,6 +12,7 @@ import re
 from io import BytesIO
 from scipy.interpolate import griddata
 from holoviews.operation import contours as hv_contours
+from bokeh.models import HoverTool
 
 # 1. ENGINE INITIALIZATION
 pn.extension('tabulator')
@@ -213,7 +214,7 @@ def _section_impl(target_cruise, z_range, filter_qc, section_var_label):
     col, cmap, unit = _SECTION_VARS[section_var_label]
     qc_clause = "AND qc_flag < 3" if filter_qc else ""
     query = f"""
-        SELECT station_id, lat, lon, time_iso, depth_m, dbar_bin,
+        SELECT station_id, station_name, lat, lon, time_iso, depth_m, dbar_bin,
                theta, in_situ_temp, SP, rho, o2_final, ph_final, chl_final
         FROM {TABLE_NAME}
         WHERE cruise_id = ?
@@ -313,7 +314,27 @@ def _section_impl(target_cruise, z_range, filter_qc, section_var_label):
         for d in cum_dist
     ])
 
-    return (img * iso * sta_lines).opts(show_grid=False)
+    # ── Station hover markers (triangle at surface, shows name on hover) ────────
+    sta_names = df.groupby('station_id')['station_name'].first()
+    marker_depth = yi.min() + (yi.max() - yi.min()) * 0.02
+    sta_hover = hv.Points(
+        pd.DataFrame({
+            'Distance Along Track (km)': cum_dist,
+            'Depth (m)':                 np.full(len(station_order), marker_depth),
+            'Station':                   [sta_names.get(s, s) for s in station_order],
+        }),
+        kdims=['Distance Along Track (km)', 'Depth (m)'],
+        vdims=['Station'],
+    ).opts(
+        color='white', size=7, marker='triangle', show_legend=False,
+        tools=[HoverTool(tooltips=[
+            ('Station',                   '@{Station}'),
+            ('Distance Along Track (km)', '@{Distance Along Track (km)}'),
+            ('Depth (m)',                 '@{Depth (m)}'),
+        ])],
+    )
+
+    return (img * iso * sta_lines * sta_hover).opts(show_grid=False)
 
 view_section = pn.Column(
     pn.Row(section_var_select, margin=(8, 0, 4, 10)),
