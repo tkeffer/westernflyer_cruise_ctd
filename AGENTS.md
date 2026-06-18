@@ -70,4 +70,4 @@ When an AI agent (like Junie or others) interacts with this repository, it shoul
 
 ### Dependencies
 - This project strictly requires **Python 3.12**.
-- The `seabirdscientific` toolkit is a git-based dependency. Ensure the environment has access to GitHub during installation.
+- Other dependencies are listed in `pyproject.toml`.
