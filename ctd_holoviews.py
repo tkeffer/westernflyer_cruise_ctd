@@ -12,7 +12,8 @@ import re
 from io import BytesIO
 from scipy.interpolate import griddata
 from holoviews.operation import contours as hv_contours
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, ColumnDataSource, LinearAxis, Range1d
+from bokeh.plotting import figure
 
 # 1. ENGINE INITIALIZATION
 pn.extension('tabulator')
@@ -134,6 +135,91 @@ def view_profiles(target_cruise, target_id, z_range, filter_qc, show_soak):
     p5 = hv.Curve(df, 'chl_final', 'depth_m', label='Chl').opts(**v_opts, color='green', width=125, yaxis=None, xlabel='Chl (mg/m³)')
 
     return (p1 + p6 + p2 + p3 + p4 + p5).cols(6).opts(shared_axes=True, merge_tools=True)
+
+@pn.depends(cruise_select, station_select, depth_slider, qc_checkbox, soak_toggle)
+def view_multi_profile(target_cruise, target_id, z_range, filter_qc, show_soak):
+    df = get_clean_df(target_cruise, target_id, z_range, filter_qc, show_soak)
+    if df.empty: return pn.pane.Alert("Data Pending...")
+
+    source = ColumnDataSource(df)
+
+    def get_range(col):
+        m, M = df[col].min(), df[col].max()
+        if pd.isna(m) or pd.isna(M):
+            return Range1d(0, 1)
+        if m == M:
+            return Range1d(m - 1, m + 1)
+        padding = (M - m) * 0.05
+        return Range1d(m - padding, M + padding)
+
+    # Base figure
+    p = figure(height=700, width=800,
+               y_axis_label='Depth (m)',
+               y_range=Range1d(df['depth_m'].max(), df['depth_m'].min()),
+               toolbar_location="right",
+               tools="pan,wheel_zoom,box_zoom,reset,save")
+
+    p.xaxis.visible = False # Hide default xaxis
+
+    # Define extra ranges
+    p.extra_x_ranges = {
+        "ph": get_range('ph_final'),
+        "o2": get_range('o2_final'),
+        "sal": get_range('SP'),
+        "temp": get_range('in_situ_temp'),
+        "chl": get_range('chl_final'),
+    }
+
+    # Add lines
+    p.line('ph_final', 'depth_m', source=source, x_range_name="ph", color='orange', line_width=2.5, legend_label='pH')
+    p.line('o2_final', 'depth_m', source=source, x_range_name="o2", color='black', line_width=2.5, legend_label='Oxygen')
+    p.line('SP', 'depth_m', source=source, x_range_name="sal", color='red', line_width=2.5, legend_label='Salinity')
+    p.line('in_situ_temp', 'depth_m', source=source, x_range_name="temp", color='purple', line_width=2.5, legend_label='In-Situ Temp')
+    p.line('chl_final', 'depth_m', source=source, x_range_name="chl", color='green', line_width=2.5, legend_label='Chlorophyll')
+
+    # Top axes (from top to bottom: pH, Oxygen, Salinity)
+    # Bokeh stacks axes outward from the plot.
+    # To get pH (top), Oxygen (middle), Salinity (bottom/closest to plot) on top of the plot:
+    # 1. Salinity (added first, closest)
+    # 2. Oxygen
+    # 3. pH (added last, furthest)
+    p.add_layout(LinearAxis(x_range_name="sal", axis_label="Salinity (PSU)",
+                            axis_label_text_color="red", axis_line_color="red",
+                            major_label_text_color="red", major_tick_line_color="red"), 'above')
+    p.add_layout(LinearAxis(x_range_name="o2", axis_label="Oxygen (µmol/kg)",
+                            axis_label_text_color="black", axis_line_color="black",
+                            major_label_text_color="black", major_tick_line_color="black"), 'above')
+    p.add_layout(LinearAxis(x_range_name="ph", axis_label="pH",
+                            axis_label_text_color="orange", axis_line_color="orange",
+                            major_label_text_color="orange", major_tick_line_color="orange"), 'above')
+
+    # Bottom axes (from top to bottom: Temperature, Chlorophyll)
+    # "top to bottom" for bottom axes means Temperature is closer to the plot than Chlorophyll.
+    # 1. Temperature (added first, closest)
+    # 2. Chlorophyll (added last, furthest)
+    p.add_layout(LinearAxis(x_range_name="temp", axis_label="Temperature (°C)",
+                            axis_label_text_color="purple", axis_line_color="purple",
+                            major_label_text_color="purple", major_tick_line_color="purple"), 'below')
+    p.add_layout(LinearAxis(x_range_name="chl", axis_label="Chlorophyll (mg/m³)",
+                            axis_label_text_color="green", axis_line_color="green",
+                            major_label_text_color="green", major_tick_line_color="green"), 'below')
+
+    hover = HoverTool(tooltips=[
+        ("Depth", "@depth_m{0.1} m"),
+        ("pH", "@ph_final{0.00}"),
+        ("Oxygen", "@o2_final{0.1}"),
+        ("Salinity", "@SP{0.00}"),
+        ("Temp", "@in_situ_temp{0.2}"),
+        ("Chl", "@chl_final{0.2}"),
+    ], mode='vline')
+    p.add_tools(hover)
+
+    p.legend.location = "top_left"
+    p.legend.click_policy = "hide"
+    p.legend.label_text_font_size = "8pt"
+    p.legend.background_fill_alpha = 0.5
+
+    return p
 
 @pn.depends(cruise_select, station_select, depth_slider, qc_checkbox, soak_toggle)
 def view_ts_analysis(target_cruise, target_id, z_range, filter_qc, show_soak):
@@ -360,6 +446,7 @@ tabs = pn.Tabs(
     ("Geolocation", view_map_geolocation),
     ("Vertical Section", view_section),
     ("Vertical Profiles", view_profiles),
+    ("Multi-Axis Profile", view_multi_profile),
     ("T-S Analysis", view_ts_analysis),
     ("Stability & MLD", view_stability),
     ("Oxygen Utilization (AOU)", view_aou),
