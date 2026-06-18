@@ -127,11 +127,11 @@ def view_profiles(target_cruise, target_id, z_range, filter_qc, show_soak):
     v_opts = dict(invert_yaxis=True, height=550, show_grid=True, xaxis='top', tools=['hover'], xticks=3, padding=0.05,
                   line_width=2.5, fontsize={'labels': '8pt', 'xticks': '7pt', 'yticks': '7pt', 'legend': '7pt'})
 
-    p1 = hv.Curve(df, 'theta', 'depth_m', label='Pot. Temp').opts(**v_opts, color='blue', width=175, xlabel='theta (°C)')
-    p6 = hv.Curve(df, 'in_situ_temp', 'depth_m', label='In-Situ Temp').opts(**v_opts, color='purple', width=140, yaxis=None, xlabel='T (°C)')
+    p1 = hv.Curve(df, 'theta', 'depth_m', label='Pot. Temp').opts(**v_opts, color='cyan', width=175, xlabel='theta (°C)')
+    p6 = hv.Curve(df, 'in_situ_temp', 'depth_m', label='In-Situ Temp').opts(**v_opts, color='blue', width=140, yaxis=None, xlabel='T (°C)')
     p2 = hv.Curve(df, 'SP', 'depth_m', label='Prac. Sal').opts(**v_opts, color='red', width=140, yaxis=None, xlabel='SP (PSU)')
     p3 = hv.Curve(df, 'o2_final', 'depth_m', label='O2').opts(**v_opts, color='black', width=155, yaxis=None, xlabel='O2 (µmol/kg)')
-    p4 = hv.Curve(df, 'ph_final', 'depth_m', label='pH').opts(**v_opts, color='orange', width=125, yaxis=None, xlabel='pH')
+    p4 = hv.Curve(df, 'ph_final', 'depth_m', label='pH').opts(**v_opts, color='goldenrod', width=125, yaxis=None, xlabel='pH')
     p5 = hv.Curve(df, 'chl_final', 'depth_m', label='Chl').opts(**v_opts, color='green', width=125, yaxis=None, xlabel='Chl (mg/m³)')
 
     return (p1 + p6 + p2 + p3 + p4 + p5).cols(6).opts(shared_axes=True, merge_tools=True)
@@ -171,10 +171,10 @@ def view_multi_profile(target_cruise, target_id, z_range, filter_qc, show_soak):
     }
 
     # Add lines
-    p.line('ph_final', 'depth_m', source=source, x_range_name="ph", color='orange', line_width=2.5, legend_label='pH')
+    p.line('ph_final', 'depth_m', source=source, x_range_name="ph", color='goldenrod', line_width=2.5, legend_label='pH')
     p.line('o2_final', 'depth_m', source=source, x_range_name="o2", color='black', line_width=2.5, legend_label='Oxygen')
     p.line('SP', 'depth_m', source=source, x_range_name="sal", color='red', line_width=2.5, legend_label='Salinity')
-    p.line('in_situ_temp', 'depth_m', source=source, x_range_name="temp", color='purple', line_width=2.5, legend_label='In-Situ Temp')
+    p.line('in_situ_temp', 'depth_m', source=source, x_range_name="temp", color='blue', line_width=2.5, legend_label='In-Situ Temp')
     p.line('chl_final', 'depth_m', source=source, x_range_name="chl", color='green', line_width=2.5, legend_label='Chlorophyll')
 
     # Top axes (from top to bottom: pH, Oxygen, Salinity)
@@ -190,16 +190,16 @@ def view_multi_profile(target_cruise, target_id, z_range, filter_qc, show_soak):
                             axis_label_text_color="black", axis_line_color="black",
                             major_label_text_color="black", major_tick_line_color="black"), 'above')
     p.add_layout(LinearAxis(x_range_name="ph", axis_label="pH",
-                            axis_label_text_color="orange", axis_line_color="orange",
-                            major_label_text_color="orange", major_tick_line_color="orange"), 'above')
+                            axis_label_text_color="goldenrod", axis_line_color="goldenrod",
+                            major_label_text_color="goldenrod", major_tick_line_color="goldenrod"), 'above')
 
     # Bottom axes (from top to bottom: Temperature, Chlorophyll)
     # "top to bottom" for bottom axes means Temperature is closer to the plot than Chlorophyll.
     # 1. Temperature (added first, closest)
     # 2. Chlorophyll (added last, furthest)
     p.add_layout(LinearAxis(x_range_name="temp", axis_label="Temperature (°C)",
-                            axis_label_text_color="purple", axis_line_color="purple",
-                            major_label_text_color="purple", major_tick_line_color="purple"), 'below')
+                            axis_label_text_color="blue", axis_line_color="blue",
+                            major_label_text_color="blue", major_tick_line_color="blue"), 'below')
     p.add_layout(LinearAxis(x_range_name="chl", axis_label="Chlorophyll (mg/m³)",
                             axis_label_text_color="green", axis_line_color="green",
                             major_label_text_color="green", major_tick_line_color="green"), 'below')
