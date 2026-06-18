@@ -10,6 +10,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Python egg
+wf_cruise_ctd.egg-info
+
 # Generated output
 processed/
 logs/
